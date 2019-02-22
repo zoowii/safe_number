@@ -1,0 +1,12 @@
+/.idea
+/*.iml
+/CMakeCache.txt
+/cmake-build-debug
+/build
+/out
+/log
+/dist
+/target
+*~
+/safe_number_demo
+/safe_number_demo.exe

@@ -165,18 +165,25 @@ SimpleUint128 simple_uint128_bit_and(const SimpleUint128& a, const SimpleUint128
 	return simple_uint128_create(a.big & b.big, a.low & b.low);
 }
 
-std::pair<SimpleUint128, SimpleUint128> simple_uint128_divmod(const SimpleUint128& a, const SimpleUint128& b) {
+static Uint128DivResult make_uint128_div_result(const SimpleUint128& div_result, const SimpleUint128& mod_result) {
+	Uint128DivResult result{};
+	result.div_result = div_result;
+	result.mod_result = mod_result;
+	return result;
+}
+
+Uint128DivResult simple_uint128_divmod(const SimpleUint128& a, const SimpleUint128& b) {
 	if (b.big == 0 && b.low == 0){
 		throw std::domain_error("Error: division or modulus by 0");
 	}
 	else if (b.big == 0 && b.low == 1){
-		return std::make_pair(a, uint128_0);
+		return make_uint128_div_result(a, uint128_0);
 	}
 	else if (a.big == b.big && a.low == b.low){
-		return std::make_pair(uint128_1, uint128_0);
+		return make_uint128_div_result(uint128_1, uint128_0);
 	}
 	else if ((a.big == 0 && a.low == 0) || (a.big < b.big || (a.big==b.big && a.low<b.low))){
-		return std::make_pair(uint128_0, a);
+		return make_uint128_div_result(uint128_0, a);
 	}
 	SimpleUint128 div_result = simple_uint128_create(0, 0);
 	SimpleUint128 mod_result = simple_uint128_create(0, 0);
@@ -194,7 +201,7 @@ std::pair<SimpleUint128, SimpleUint128> simple_uint128_divmod(const SimpleUint12
 			div_result = simple_uint128_add(div_result, uint128_1);
 		}
 	}
-	return std::make_pair(div_result, mod_result);
+	return make_uint128_div_result(div_result, mod_result);
 }
 
 uint8_t simple_uint128_bits(const SimpleUint128& a) {
@@ -241,6 +248,9 @@ bool safe_number_is_valid(const SafeNumber& a) {
 	return a.valid;
 }
 
+bool safe_number_invalid(const SafeNumber& a) {
+    return !a.valid;
+}
 
 static SafeNumber compress_number(const SafeNumber& a) {
 	// compress a's value. If a.x is a multiple of 10, the value of a.e can be reduced accordingly.
@@ -292,6 +302,14 @@ SafeNumber safe_number_create(bool sign, uint64_t x, uint32_t e) {
 	return compress_number(n);
 }
 
+SafeNumber safe_number_create(int64_t value) {
+	SafeNumber n;
+	n.valid = true;
+	n.sign = value >= 0;
+	n.x = static_cast<uint64_t>(value >= 0 ? value : -value);
+	n.e = 0;
+	return compress_number(n);
+}
 
 const SafeNumber sn_0 = safe_number_zero();
 const SafeNumber sn_1 = safe_number_create(true, 1, 0);
@@ -396,7 +414,7 @@ SafeNumber safe_number_multiply(const SafeNumber& a, const SafeNumber& b) {
 		if(result_e==0) {
 			break;
 		}
-		abx = simple_uint128_divmod(abx, uint128_10).first; // abx = abx/10
+		abx = simple_uint128_divmod(abx, uint128_10).div_result; // abx = abx/10
 		--result_e;
 	}
 	auto result_x = abx.low; // throw abx's overflow upper part
@@ -424,8 +442,8 @@ SafeNumber safe_number_div(const SafeNumber& a, const SafeNumber& b) {
 	// r.x = r.x* 10 + big_a/big_b, big_a = (big_a % big_b) * 10, r.e += 1, Repeat this step until r.e >= 16 or big_a == 0 or rx > largest_x
 	do {
 		const auto& divmod = simple_uint128_divmod(big_a, big_b);
-		rx = rx * 10 + divmod.first.low; // ignore overflowed value
-		big_a = simple_uint128_multi(divmod.second, uint128_10);
+		rx = rx * 10 + divmod.div_result.low; // ignore overflowed value
+		big_a = simple_uint128_multi(divmod.mod_result, uint128_10);
 		++re;
 	}while(re<16 && rx < largest_x && (big_a.big || big_a.low));
 	if(extra_e>=-static_cast<int32_t>(re)) {
@@ -457,4 +475,81 @@ std::string safe_number_to_string(const SafeNumber& a) {
 		ss << "." << q;
 	}
 	return ss.str();
+}
+
+int64_t safe_number_to_int64(const SafeNumber& a) {
+	if(safe_number_invalid(a)) {
+		return 0;
+	}
+	if(safe_number_is_zero(a)) {
+		return 0;
+	}
+	int64_t result = 0;
+	if(a.e > 0) {
+		auto tmp = static_cast<int64_t>(a.x / uint64_pow(10, a.e));
+		result = a.sign ? tmp : -tmp;
+	}
+	return result;
+}
+
+bool safe_number_eq(const SafeNumber& a, const SafeNumber& b) {
+	if(safe_number_invalid(a) || safe_number_invalid(b)) {
+		return false;
+	}
+	return a.sign == b.sign && a.x == b.x && a.e == b.e;
+}
+
+bool safe_number_ne(const SafeNumber& a, const SafeNumber& b) {
+	if(safe_number_invalid(a) || safe_number_invalid(b)) {
+		return false;
+	}
+	return !safe_number_eq(a, b);
+}
+
+bool safe_number_gt(const SafeNumber& a, const SafeNumber& b) {
+	if(safe_number_invalid(a) || safe_number_invalid(b)) {
+		return false;
+	}
+	if(a.sign != b.sign) {
+		return a.sign;
+	}
+	auto a_int = safe_number_to_int64(a);
+	auto b_int = safe_number_to_int64(b);
+	if(a_int > b_int) {
+		return a.sign;
+	} else if(a_int < b_int) {
+		return !a.sign;
+	}
+	uint64_t a_remaining = a.x - static_cast<uint64_t>((a.sign ? a_int : -a_int) * uint64_pow(10, a.e));
+	uint64_t b_remaining = b.x - static_cast<uint64_t>((b.sign ? b_int : -b_int) * uint64_pow(10, b.e));
+	auto extend_a_remaining = a_remaining;
+	auto extend_b_remaining = b_remaining;
+	if(a.e > b.e) {
+		extend_b_remaining *= uint64_pow(10, a.e - b.e);
+	} else if(a.e < b.e) {
+		extend_a_remaining *= uint64_pow(10, b.e - a.e);
+	}
+	if(extend_a_remaining == extend_b_remaining) {
+		return false;
+	}
+	if(extend_a_remaining > extend_b_remaining) {
+		return a.sign;
+	}
+	// extend_a_remaining < extend_b_remaining
+	return !a.sign;
+}
+
+// a >= b
+bool safe_number_gte(const SafeNumber& a, const SafeNumber& b) {
+	return safe_number_eq(a, b) || safe_number_gt(a, b);
+}
+
+// a < b
+bool safe_number_lt(const SafeNumber& left, const SafeNumber& right) {
+	return safe_number_gt(right, left);
+}
+
+// a <= b
+bool safe_number_lte(const SafeNumber& a, const SafeNumber& b) {
+	return safe_number_eq(a, b) || safe_number_lt(a, b);
 }

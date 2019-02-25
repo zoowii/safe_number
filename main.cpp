@@ -8,7 +8,7 @@ static void test_assert(bool cond, const std::string& msg) {
     if(!cond) {
         std::string err_msg = msg.size()>0 ? msg : std::string("some error happen");
         std::cout << "test assert error: " << err_msg << std::endl;
-        throw std::runtime_error(err_msg);
+        exit(1);
     }
 }
 
@@ -55,6 +55,9 @@ int main() {
     auto b6 = safe_number_div(safe_number_create("12345678.98765432"), a3); // 12345678.98765432 / 0.123 = 100371373.8833684
     cout << "b6=" << to_s(b6) << endl;
     test_assert(to_s(b6)=="100371373.8833684", "b6 invalid");
+    auto b7 = safe_number_mod(safe_number_create("12345678.98765432"), safe_number_create(5)); // 12345678.98765432 % 5 = 0.2
+    cout << "b7=" << to_s(b7) << endl;
+    test_assert(to_s(b7)=="0.2", "b7 invalid");
     auto a2_int = safe_number_to_int64(a2); // -54
     cout << "int(a2)=" << a2_int << endl;
     test_assert(a2_int==-54, "a2_int invalid");
@@ -63,5 +66,7 @@ int main() {
     test_assert(safe_number_eq(a1, safe_number_create("12.345")), "a1 == a1");
     test_assert(safe_number_lt(safe_number_create("1.234"), safe_number_create("1.2340001")), "1.234 < 1.2340001");
     test_assert(safe_number_gt(safe_number_create("-1.234"), safe_number_create("-1.2340001")), "-1.234 > -1.2340001");
+    test_assert(safe_number_eq(safe_number_abs(safe_number_create("-123.45")), safe_number_create("123.45")), "abs(-123.45) == 123.45");
+    test_assert(std::to_string(a1) == "12.345", "to_string(12.345) == 12.345");
     return 0;
 }

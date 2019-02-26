@@ -8,14 +8,20 @@ struct SimpleUint128 {
 };
 
 SimpleUint128 simple_uint128_create(uint64_t big, uint64_t low);
+
+bool simple_uint128_is_zero(const SimpleUint128& a);
 // a > b
 bool simple_uint128_gt(const SimpleUint128& a, const SimpleUint128& b);
+// a < b
+bool simple_uint128_lt(const SimpleUint128& a, const SimpleUint128& b);
 // a == b
 bool simple_uint128_eq(const SimpleUint128& a, const SimpleUint128& b);
 // a >= b
 bool simple_uint128_ge(const SimpleUint128& a, const SimpleUint128& b);
 // a + b
 SimpleUint128 simple_uint128_add(const SimpleUint128& a, const SimpleUint128& b);
+// a + b
+SimpleUint128 simple_uint128_add(const SimpleUint128& a, uint64_t b);
 // a - b
 SimpleUint128 simple_uint128_minus(const SimpleUint128& a, const SimpleUint128& b);
 // - a
@@ -23,11 +29,15 @@ SimpleUint128 simple_uint128_neg(const SimpleUint128& a);
 // a * b
 SimpleUint128 simple_uint128_multi(const SimpleUint128& a, const SimpleUint128& b);
 // a << b
-SimpleUint128 simple_uint128_shift_left(const SimpleUint128& a, const SimpleUint128& b);
+SimpleUint128 simple_uint128_shift_left(const SimpleUint128& a, uint32_t b);
 // a >> b
-SimpleUint128 simple_uint128_shift_right(const SimpleUint128& a, const SimpleUint128& b);
+SimpleUint128 simple_uint128_shift_right(const SimpleUint128& a, uint32_t b);
 // a & b
 SimpleUint128 simple_uint128_bit_and(const SimpleUint128& a, const SimpleUint128& b);
+// a | b
+SimpleUint128 simple_uint128_bit_or(const SimpleUint128& a, const SimpleUint128& b);
+// ~a
+SimpleUint128 simple_uint128_bit_reverse(const SimpleUint128& a);
 
 struct Uint128DivResult {
     SimpleUint128 div_result;
@@ -37,6 +47,48 @@ struct Uint128DivResult {
 Uint128DivResult simple_uint128_divmod(const SimpleUint128& a, const SimpleUint128& b);
 // how many bits does SimpleUint128 have bits who is not 0 from the beginning
 uint8_t simple_uint128_bits(const SimpleUint128& a);
+
+std::string simple_uint128_to_string(const SimpleUint128& a, uint8_t base, unsigned int len);
+
+struct SimpleUint256 {
+    SimpleUint128 big;
+    SimpleUint128 low;
+};
+
+SimpleUint256 simple_uint256_create(const SimpleUint128& big, const SimpleUint128& low);
+
+bool simple_uint256_is_zero(const SimpleUint256& a);
+// a > b
+bool simple_uint256_gt(const SimpleUint256& a, const SimpleUint256& b);
+// a == b
+bool simple_uint256_eq(const SimpleUint256& a, const SimpleUint256& b);
+// a >= b
+bool simple_uint256_ge(const SimpleUint256& a, const SimpleUint256& b);
+// a + b
+SimpleUint256 simple_uint256_add(const SimpleUint256& a, const SimpleUint256& b);
+// a - b
+SimpleUint256 simple_uint256_minus(const SimpleUint256& a, const SimpleUint256& b);
+// - a
+SimpleUint256 simple_uint256_neg(const SimpleUint256& a);
+// a * b
+SimpleUint256 simple_uint256_multi(const SimpleUint256& a, const SimpleUint256& b);
+// a << b
+SimpleUint256 simple_uint256_shift_left(const SimpleUint256& a, uint32_t b);
+// a >> b
+SimpleUint256 simple_uint256_shift_right(const SimpleUint256& a, uint32_t b);
+// a & b
+SimpleUint256 simple_uint256_bit_and(const SimpleUint256& a, const SimpleUint256& b);
+
+struct Uint256DivResult {
+    SimpleUint256 div_result;
+    SimpleUint256 mod_result;
+};
+// a / b. return div result and mod result. may throw exception
+Uint256DivResult simple_uint256_divmod(const SimpleUint256& a, const SimpleUint256& b);
+// how many bits does SimpleUint128 have bits who is not 0 from the beginning
+uint8_t simple_uint256_bits(const SimpleUint256& a);
+
+std::string simple_uint256_to_string(const SimpleUint256& a, uint8_t base, unsigned int len);
 
 struct SafeNumber {
     // sign(+/-) x * (10^-e)
@@ -88,10 +140,6 @@ SafeNumber safe_number_mod(const SafeNumber& a, const SafeNumber& b);
 // abs(a)
 SafeNumber safe_number_abs(const SafeNumber& a);
 
-namespace std {
-    std::string to_string(const SafeNumber& value);
-}
-
 // tostring(a)
 std::string safe_number_to_string(const SafeNumber& a);
 
@@ -114,3 +162,10 @@ bool safe_number_lt(const SafeNumber& a, const SafeNumber& b);
 
 // a <= b
 bool safe_number_lte(const SafeNumber& a, const SafeNumber& b);
+
+
+namespace std {
+    std::string to_string(const SimpleUint128& value);
+    std::string to_string(const SimpleUint256& value);
+    std::string to_string(const SafeNumber& value);
+}

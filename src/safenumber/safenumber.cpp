@@ -29,21 +29,30 @@ static uint64_t uint64_pow(uint64_t a, int p) {
 
 
 SimpleUint128 simple_uint128_create(uint64_t big, uint64_t low) {
-	SimpleUint128 result;
+	SimpleUint128 result {};
 	result.big = big;
 	result.low = low;
 	return result;
 }
 
+bool simple_uint128_is_zero(const SimpleUint128& a) {
+    return a.big == 0 && a.low == 0;
+}
+
 const SimpleUint128 uint128_0 = simple_uint128_create(0, 0);
 const SimpleUint128 uint128_1 = simple_uint128_create(0, 1);
 const SimpleUint128 uint128_10 = simple_uint128_create(0, 10);
+const SimpleUint128 uint128_bigest = simple_uint128_create(0xffffffff, 0xffffffff);
 
 bool simple_uint128_gt(const SimpleUint128& a, const SimpleUint128& b) {
 	if (a.big == b.big){
 		return (a.low > b.low);
 	}
 	return (a.big > b.big);
+}
+
+bool simple_uint128_lt(const SimpleUint128& a, const SimpleUint128& b) {
+	return simple_uint128_gt(b, a);
 }
 
 bool simple_uint128_eq(const SimpleUint128& a, const SimpleUint128& b) {
@@ -55,11 +64,15 @@ bool simple_uint128_ge(const SimpleUint128& a, const SimpleUint128& b) {
 }
 
 SimpleUint128 simple_uint128_add(const SimpleUint128& a, const SimpleUint128& b) {
-	return simple_uint128_create(a.big + b.big + ((a.low + b.low) < a.low), a.low + b.low);
+	return simple_uint128_create(a.big + b.big + ((a.low + b.low) < a.low ? 1 : 0), a.low + b.low);
+}
+
+SimpleUint128 simple_uint128_add(const SimpleUint128& a, uint64_t b) {
+	return simple_uint128_add(a, simple_uint128_create(0, b));
 }
 
 SimpleUint128 simple_uint128_minus(const SimpleUint128& a, const SimpleUint128& b) {
-	return simple_uint128_create(a.big - b.big - ((a.low - b.low) > a.low), a.low - b.low);
+	return simple_uint128_create(a.big - b.big - ((a.low - b.low) > a.low ? 1 : 0), a.low - b.low);
 }
 
 SimpleUint128 simple_uint128_neg(const SimpleUint128& a) {
@@ -117,9 +130,9 @@ SimpleUint128 simple_uint128_multi(const SimpleUint128& a, const SimpleUint128& 
 	return simple_uint128_create(result_big, result_low);
 }
 
-SimpleUint128 simple_uint128_shift_left(const SimpleUint128& a, const SimpleUint128& b) {
-	const uint64_t shift = b.low;
-	if (((bool) b.big) || (shift >= 128)){
+SimpleUint128 simple_uint128_shift_left(const SimpleUint128& a, uint32_t b) {
+	uint32_t shift = b;
+	if (shift >= 128){
 		return uint128_0;
 	}
 	else if (shift == 64){
@@ -139,9 +152,9 @@ SimpleUint128 simple_uint128_shift_left(const SimpleUint128& a, const SimpleUint
 	}
 }
 
-SimpleUint128 simple_uint128_shift_right(const SimpleUint128& a, const SimpleUint128& b) {
-	const uint64_t shift = b.low;
-	if (((bool) b.big) || (shift >= 128)){
+SimpleUint128 simple_uint128_shift_right(const SimpleUint128& a, uint32_t b) {
+	const uint32_t shift = b;
+	if (shift >= 128){
 		return uint128_0;
 	}
 	else if (shift == 64){
@@ -163,6 +176,17 @@ SimpleUint128 simple_uint128_shift_right(const SimpleUint128& a, const SimpleUin
 
 SimpleUint128 simple_uint128_bit_and(const SimpleUint128& a, const SimpleUint128& b) {
 	return simple_uint128_create(a.big & b.big, a.low & b.low);
+}
+
+SimpleUint128 simple_uint128_bit_or(const SimpleUint128& a, const SimpleUint128& b) {
+	return simple_uint128_create(a.big | b.big, a.low | b.low);
+}
+
+SimpleUint128 simple_uint128_bit_reverse(const SimpleUint128& a) {
+	SimpleUint128 result = {};
+	result.big = ~a.big;
+	result.low = ~a.low;
+	return result;
 }
 
 static Uint128DivResult make_uint128_div_result(const SimpleUint128& div_result, const SimpleUint128& mod_result) {
@@ -188,10 +212,10 @@ Uint128DivResult simple_uint128_divmod(const SimpleUint128& a, const SimpleUint1
 	SimpleUint128 div_result = simple_uint128_create(0, 0);
 	SimpleUint128 mod_result = simple_uint128_create(0, 0);
 	for(uint8_t x = simple_uint128_bits(a); x > 0; x--){
-		div_result = simple_uint128_shift_left(div_result, uint128_1);
-		mod_result = simple_uint128_shift_left(mod_result, uint128_1);
+		div_result = simple_uint128_shift_left(div_result, 1);
+		mod_result = simple_uint128_shift_left(mod_result, 1);
 
-		auto tmp1 = simple_uint128_shift_right(a, simple_uint128_create(0, x-1U));
+		auto tmp1 = simple_uint128_shift_right(a, x-1U);
 		auto tmp2 = simple_uint128_bit_and(tmp1, uint128_1);
 		if (tmp2.big || tmp2.low){
 			mod_result = simple_uint128_add(mod_result, uint128_1);
@@ -223,6 +247,265 @@ uint8_t simple_uint128_bits(const SimpleUint128& a) {
 	}
 	return out;
 }
+
+std::string simple_uint128_to_string(const SimpleUint128& a, uint8_t base, unsigned int len) {
+	if ((base < 2) || (base > 16)){
+		throw std::invalid_argument("Base must be in the range [2, 16]");
+	}
+	std::string out = "";
+	if (simple_uint128_is_zero(a)){
+		out = "0";
+	}
+	else{
+		auto qr = make_uint128_div_result(a, uint128_0);
+		auto base_uint128 = simple_uint128_create(0, base);
+		do{
+			qr = simple_uint128_divmod(qr.div_result, base_uint128);
+			out = "0123456789abcdef"[(uint8_t) qr.mod_result.low] + out;
+		} while (!simple_uint128_is_zero(qr.div_result));
+	}
+	if (out.size() < len){
+		out = std::string(len - out.size(), '0') + out;
+	}
+	return out;
+}
+
+// SimpleUint256 start
+SimpleUint256 simple_uint256_create(const SimpleUint128& big, const SimpleUint128& low) {
+    SimpleUint256 result;
+    result.big = big;
+    result.low = low;
+    return result;
+}
+
+bool simple_uint256_is_zero(const SimpleUint256& a) {
+	return simple_uint128_is_zero(a.big) && simple_uint128_is_zero(a.low);
+}
+
+const SimpleUint256 uint256_0 = simple_uint256_create(uint128_0, uint128_0);
+const SimpleUint256 uint256_1 = simple_uint256_create(uint128_0, uint128_1);
+const SimpleUint256 uint256_10 = simple_uint256_create(uint128_0, uint128_10);
+
+bool simple_uint256_gt(const SimpleUint256& a, const SimpleUint256& b) {
+	if (simple_uint128_eq(a.big, b.big)){
+		return simple_uint128_gt(a.low, b.low);
+	}
+	return simple_uint128_gt(a.big, b.big);
+}
+
+bool simple_uint256_eq(const SimpleUint256& a, const SimpleUint256& b) {
+	return (simple_uint128_eq(a.big, b.big) && simple_uint128_eq(a.low, b.low));
+}
+
+bool simple_uint256_ge(const SimpleUint256& a, const SimpleUint256& b) {
+	return simple_uint256_gt(a, b) || simple_uint256_eq(a, b);
+}
+
+SimpleUint256 simple_uint256_add(const SimpleUint256& a, const SimpleUint256& b) {
+	const auto& abig_plus_bbig = simple_uint128_add(a.big, b.big);
+	const auto& alow_plus_blow = simple_uint128_add(a.low, b.low);
+	return simple_uint256_create(simple_uint128_add(abig_plus_bbig, simple_uint128_lt(alow_plus_blow, a.low) ? 1 : 0), alow_plus_blow);
+}
+
+SimpleUint256 simple_uint256_minus(const SimpleUint256& a, const SimpleUint256& b) {
+	const auto& abig_minus_bbig = simple_uint128_minus(a.big, b.big);
+	const auto& alow_minus_blow = simple_uint128_minus(a.low, b.low);
+	return simple_uint256_create(simple_uint128_add(abig_minus_bbig, simple_uint128_gt(alow_minus_blow, a.low) ? -1 : 0), alow_minus_blow);
+}
+
+SimpleUint256 simple_uint256_neg(const SimpleUint256& a) {
+	SimpleUint256 reverse_a;
+	reverse_a.big = simple_uint128_bit_reverse(a.big);
+	reverse_a.low = simple_uint128_bit_reverse(a.low);
+	return simple_uint256_add(reverse_a, uint256_1);
+}
+
+SimpleUint256 simple_uint256_multi(const SimpleUint256& a, const SimpleUint256& b) {
+	// split values into 4 64-bit parts
+	SimpleUint128 top[4] = {simple_uint128_shift_right(a.big, 64), simple_uint128_bit_and(a.big, uint128_bigest), simple_uint128_shift_right(a.low, 64), simple_uint128_bit_and(a.low, uint128_bigest) };
+	SimpleUint128 bottom[4] = { simple_uint128_shift_right(b.big, 64), simple_uint128_bit_and(b.big, uint128_bigest), simple_uint128_shift_right(b.low, 64), simple_uint128_bit_and(b.low, uint128_bigest) };
+	SimpleUint128 products[4][4];
+
+	// multiply each component of the values
+	for(int y = 3; y > -1; y--){
+		for(int x = 3; x > -1; x--){
+			products[3 - x][y] = simple_uint128_multi(top[x], bottom[y]);
+		}
+	}
+
+	// first row
+	SimpleUint128 fourth32 = simple_uint128_bit_and(products[0][3], uint128_bigest);
+	SimpleUint128 third32  = simple_uint128_add(simple_uint128_bit_and(products[0][2], uint128_bigest), simple_uint128_shift_right(products[0][3], 64));
+	SimpleUint128 second32 = simple_uint128_add(simple_uint128_bit_and(products[0][1], uint128_bigest), simple_uint128_shift_right(products[0][2], 64));
+	SimpleUint128 first32  = simple_uint128_add(simple_uint128_bit_and(products[0][0], uint128_bigest), simple_uint128_shift_right(products[0][1], 64));
+
+	// second row
+	third32  = simple_uint128_add(third32, simple_uint128_bit_and(products[1][3], uint128_bigest));
+	second32 = simple_uint128_add(second32, simple_uint128_add(simple_uint128_bit_and(products[1][2], uint128_bigest), simple_uint128_shift_right(products[1][3], 64)));
+	first32  = simple_uint128_add(first32, simple_uint128_add(simple_uint128_bit_and(products[1][1], uint128_bigest), simple_uint128_shift_right(products[1][2], 64)));
+
+	// third row
+	second32 = simple_uint128_add(second32, simple_uint128_bit_and(products[2][3], uint128_bigest));
+	first32  = simple_uint128_add(first32, simple_uint128_add(simple_uint128_bit_and(products[2][2], uint128_bigest), simple_uint128_shift_right(products[2][3], 64)));
+
+	// fourth row
+	first32  = simple_uint128_add(first32, simple_uint128_bit_and(products[3][3], uint128_bigest));
+
+	// move carry to next digit
+	third32  = simple_uint128_add(third32, simple_uint128_shift_right(fourth32, 64));
+	second32 = simple_uint128_add(second32, simple_uint128_shift_right(third32, 64));
+	first32  = simple_uint128_add(first32, simple_uint128_shift_right(second32, 64));
+
+	// remove carry from current digit
+	fourth32 = simple_uint128_bit_and(fourth32, uint128_bigest);
+	third32  = simple_uint128_bit_and(third32, uint128_bigest);
+	second32 = simple_uint128_bit_and(second32, uint128_bigest);
+	first32  = simple_uint128_bit_and(first32, uint128_bigest);
+
+	// combine components
+	const auto& result_big = simple_uint128_bit_or(simple_uint128_shift_left(first32, 64), second32);
+	const auto& result_low = simple_uint128_bit_or(simple_uint128_shift_left(third32, 64), fourth32);
+	return simple_uint256_create(result_big, result_low);
+}
+
+SimpleUint256 simple_uint256_shift_left(const SimpleUint256& a, uint32_t b) {
+	uint32_t shift = b;
+	if (shift >= 256){
+		return uint256_0;
+	}
+	else if (shift == 128){
+		return simple_uint256_create(a.low, uint128_0);
+	}
+	else if (shift == 0){
+		return a;
+	}
+	else if (shift < 128){
+		return simple_uint256_create(simple_uint128_add(simple_uint128_shift_left(a.big, shift), simple_uint128_shift_right(a.low, 128 - shift)), simple_uint128_shift_left(a.low, shift));
+	}
+	else if ((256 > shift) && (shift > 128)){
+		return simple_uint256_create(simple_uint128_shift_left(a.low, shift - 128), uint128_0);
+	}
+	else{
+		return uint256_0;
+	}
+}
+
+SimpleUint256 simple_uint256_shift_right(const SimpleUint256& a, uint32_t b) {
+	const uint32_t shift = b;
+	if (shift >= 256){
+		return uint256_0;
+	}
+	else if (shift == 128){
+		return simple_uint256_create(uint128_0, a.big);
+	}
+	else if (shift == 0){
+		return a;
+	}
+	else if (shift < 128){
+		return simple_uint256_create(simple_uint128_shift_right(a.big, shift), simple_uint128_add(simple_uint128_shift_left(a.big, 128 - shift), simple_uint128_shift_right(a.low, shift)));
+	}
+	else if ((256 > shift) && (shift > 128)){
+		return simple_uint256_create(uint128_0, simple_uint128_shift_right(a.big, shift - 128));
+	}
+	else{
+		return uint256_0;
+	}
+}
+
+SimpleUint256 simple_uint256_bit_and(const SimpleUint256& a, const SimpleUint256& b) {
+	return simple_uint256_create(simple_uint128_bit_and(a.big, b.big), simple_uint128_bit_and(a.low, b.low));
+}
+
+SimpleUint256 simple_uint256_bit_reverse(const SimpleUint256& a) {
+	SimpleUint256 result = {};
+	result.big = simple_uint128_bit_reverse(a.big);
+	result.low = simple_uint128_bit_reverse(a.low);
+	return result;
+}
+
+static Uint256DivResult make_uint256_div_result(const SimpleUint256& div_result, const SimpleUint256& mod_result) {
+	Uint256DivResult result{};
+	result.div_result = div_result;
+	result.mod_result = mod_result;
+	return result;
+}
+
+Uint256DivResult simple_uint256_divmod(const SimpleUint256& a, const SimpleUint256& b) {
+	if (simple_uint256_is_zero(b)) {
+		throw std::domain_error("Error: division or modulus by 0");
+	}
+	else if (simple_uint128_is_zero(b.big) && simple_uint128_eq(b.low, uint128_1)) {
+		return make_uint256_div_result(a, uint256_0);
+	}
+	else if (simple_uint128_eq(a.big, b.big) && simple_uint128_eq(a.low, b.low)){
+		return make_uint256_div_result(uint256_1, uint256_0);
+	}
+	else if ((simple_uint128_is_zero(a.big) && simple_uint128_is_zero(a.low)) || (simple_uint128_lt(a.big, b.big) || (simple_uint128_eq(a.big, b.big) && simple_uint128_lt(a.low, b.low)))){
+		return make_uint256_div_result(uint256_0, a);
+	}
+	SimpleUint256 div_result = uint256_0;
+	SimpleUint256 mod_result = uint256_0;
+	for(uint8_t x = simple_uint256_bits(a); x > 0; x--){
+		div_result = simple_uint256_shift_left(div_result, 1);
+		mod_result = simple_uint256_shift_left(mod_result, 1);
+
+		auto tmp1 = simple_uint256_shift_right(a, x - 1U);
+		auto tmp2 = simple_uint256_bit_and(tmp1, uint256_1);
+		if (!simple_uint256_is_zero(tmp2)){
+			mod_result = simple_uint256_add(mod_result, uint256_1);
+		}
+		if (simple_uint256_ge(mod_result, b)){
+			mod_result = simple_uint256_minus(mod_result, b);
+			div_result = simple_uint256_add(div_result, uint256_1);
+		}
+	}
+	return make_uint256_div_result(div_result, mod_result);
+}
+
+uint8_t simple_uint256_bits(const SimpleUint256& a) {
+    uint8_t out = 0;
+    if (!simple_uint128_is_zero(a.big)){
+        out = 128;
+        SimpleUint128 up = a.big;
+        while (!simple_uint128_is_zero(up)){
+            up = simple_uint128_shift_right(up, 1);
+            out++;
+        }
+    }
+    else{
+        SimpleUint128 low = a.low;
+        while (!simple_uint128_is_zero(low)){
+            low = simple_uint128_shift_right(low, 1);
+            out++;
+        }
+    }
+    return out;
+}
+
+std::string simple_uint256_to_string(const SimpleUint256& a, uint8_t base, unsigned int len) {
+	if ((base < 2) || (base > 16)){
+		throw std::invalid_argument("Base must be in the range [2, 16]");
+	}
+	std::string out = "";
+	if (simple_uint256_is_zero(a)){
+		out = "0";
+	}
+	else{
+		auto qr = make_uint256_div_result(a, uint256_0);
+		auto base_uint256 = simple_uint256_create(uint128_0, simple_uint128_create(0, base));
+		do{
+			qr = simple_uint256_divmod(qr.div_result, base_uint256);
+			out = "0123456789abcdef"[(uint8_t) qr.mod_result.low.low] + out;
+		} while (!simple_uint256_is_zero(qr.div_result));
+	}
+	if (out.size() < len){
+		out = std::string(len - out.size(), '0') + out;
+	}
+	return out;
+}
+
+// SimpleUint256 end
+
 
 SafeNumber safe_number_zero() {
 	SafeNumber n;
@@ -476,12 +759,6 @@ SafeNumber safe_number_abs(const SafeNumber& a) {
     return r;
 }
 
-namespace std {
-    std::string to_string(const SafeNumber& value) {
-        return safe_number_to_string(value);
-    }
-}
-
 // tostring(a)
 std::string safe_number_to_string(const SafeNumber& a) {
 	const auto& val = compress_number(a);
@@ -579,4 +856,18 @@ bool safe_number_lt(const SafeNumber& left, const SafeNumber& right) {
 // a <= b
 bool safe_number_lte(const SafeNumber& a, const SafeNumber& b) {
 	return safe_number_eq(a, b) || safe_number_lt(a, b);
+}
+
+namespace std {
+	std::string to_string(const SimpleUint128& value) {
+		return simple_uint128_to_string(value, 10, 0);
+	}
+
+	std::string to_string(const SimpleUint256& value) {
+		return simple_uint256_to_string(value, 10, 0);
+	}
+
+	std::string to_string(const SafeNumber& value) {
+		return safe_number_to_string(value);
+	}
 }

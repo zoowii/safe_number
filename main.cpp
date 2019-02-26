@@ -71,5 +71,16 @@ int main() {
     test_assert(safe_number_gt(safe_number_create("-1.234"), safe_number_create("-1.2340001")), "-1.234 > -1.2340001");
     test_assert(safe_number_eq(safe_number_abs(safe_number_create("-123.45")), safe_number_create("123.45")), "abs(-123.45) == 123.45");
     test_assert(std::to_string(a1) == "12.345", "to_string(12.345) == 12.345");
+
+    const SimpleUint128 uint128_0 = simple_uint128_create(0, 0);
+    const SimpleUint128 uint128_1 = simple_uint128_create(0, 1);
+    auto u1 = simple_uint256_create(simple_uint128_create(1234, 0), simple_uint128_create(0, 123));
+    auto u2 = simple_uint256_divmod(u1, simple_uint256_create(uint128_0, simple_uint128_create(0, 12345)));
+    cout << "u1=" << std::to_string(u1) << endl;
+    test_assert(std::to_string(u1) == "7745943541467164062573364148238260357470306618468618588913787", "u1 invalid");
+    cout << "u2.div=" << std::to_string(u2.div_result) << " u2.mod=" << std::to_string(u2.mod_result) << endl;
+    test_assert(std::to_string(u2.div_result) == "627455936935371734513840757248947781083054404088182955764", "u2.div invalid");
+    test_assert(std::to_string(u2.mod_result) == "7207", "u2.mod invalid");
+
     return 0;
 }

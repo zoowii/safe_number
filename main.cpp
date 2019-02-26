@@ -55,9 +55,12 @@ int main() {
     auto b6 = safe_number_div(safe_number_create("12345678.98765432"), a3); // 12345678.98765432 / 0.123 = 100371373.8833684
     cout << "b6=" << to_s(b6) << endl;
     test_assert(to_s(b6)=="100371373.8833684", "b6 invalid");
-    auto b7 = safe_number_mod(safe_number_create("12345678.98765432"), safe_number_create(5)); // 12345678.98765432 % 5 = 0.2
+    auto b7 = safe_number_mod(safe_number_create("12345678.98765432"), safe_number_create(5)); // 12345678.98765432 % 5 = 3.98765432
     cout << "b7=" << to_s(b7) << endl;
-    test_assert(to_s(b7)=="0.2", "b7 invalid");
+    test_assert(to_s(b7)=="3.98765432", "b7 invalid");
+    auto b8 = safe_number_mod(safe_number_create("123"), safe_number_create(5)); // 123 % 5 = 3
+    cout << "b8=" << to_s(b8) << endl;
+    test_assert(to_s(b8)=="3", "b8 invalid");
     auto a2_int = safe_number_to_int64(a2); // -54
     cout << "int(a2)=" << a2_int << endl;
     test_assert(a2_int==-54, "a2_int invalid");

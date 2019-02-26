@@ -455,8 +455,18 @@ SafeNumber safe_number_div(const SafeNumber& a, const SafeNumber& b) {
 	return safe_number_create(sign, rx, static_cast<uint32_t>(re));
 }
 
+SafeNumber safe_number_idiv(const SafeNumber& a, const SafeNumber& b) {
+	const auto& div_result = safe_number_div(a, b);
+	const auto& div_result_int = safe_number_to_int64(div_result);
+	if(div_result.sign) {
+		return safe_number_create(div_result_int);
+	} else {
+		return safe_number_create(div_result_int-1);
+	}
+}
+
 SafeNumber safe_number_mod(const SafeNumber& a, const SafeNumber& b) {
-    const auto& div_result = safe_number_div(a, b);
+    const auto& div_result = safe_number_idiv(a, b);
     const auto& mod_result = safe_number_minus(a, safe_number_multiply(b, div_result));
     return mod_result;
 }

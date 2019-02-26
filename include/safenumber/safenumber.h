@@ -79,6 +79,9 @@ SafeNumber safe_number_multiply(const SafeNumber& a, const SafeNumber& b);
 // a / b
 SafeNumber safe_number_div(const SafeNumber& a, const SafeNumber& b);
 
+// toint(a/b)
+SafeNumber safe_number_idiv(const SafeNumber& a, const SafeNumber& b);
+
 // a % b
 SafeNumber safe_number_mod(const SafeNumber& a, const SafeNumber& b);
 

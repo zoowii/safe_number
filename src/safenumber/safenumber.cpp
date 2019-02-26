@@ -42,7 +42,8 @@ bool simple_uint128_is_zero(const SimpleUint128& a) {
 const SimpleUint128 uint128_0 = simple_uint128_create(0, 0);
 const SimpleUint128 uint128_1 = simple_uint128_create(0, 1);
 const SimpleUint128 uint128_10 = simple_uint128_create(0, 10);
-const SimpleUint128 uint128_bigest = simple_uint128_create(0xffffffff, 0xffffffff);
+const uint64_t uint64_bigest = 0xffffffffffffffffL;
+const SimpleUint128 uint128_bigest = simple_uint128_create(uint64_bigest, uint64_bigest);
 
 bool simple_uint128_gt(const SimpleUint128& a, const SimpleUint128& b) {
 	if (a.big == b.big){
@@ -128,6 +129,19 @@ SimpleUint128 simple_uint128_multi(const SimpleUint128& a, const SimpleUint128& 
 	auto result_big = (first32 << 32) | second32;
 	auto result_low = (third32 << 32) | fourth32;
 	return simple_uint128_create(result_big, result_low);
+}
+
+SimpleUint128 simple_uint128_multi(const SimpleUint128& a, uint64_t b) {
+	return simple_uint128_multi(a, simple_uint128_create(0, b));
+}
+
+SimpleUint128 simple_uint128_pow(const SimpleUint128& a, uint8_t p) {
+	SimpleUint128 result = uint128_1;
+	// TODO: change to multiply only log(p) times
+	for(uint8_t i = 0;i<p;i++) {
+		result = simple_uint128_multi(result, a);
+	}
+	return result;
 }
 
 SimpleUint128 simple_uint128_shift_left(const SimpleUint128& a, uint32_t b) {
@@ -322,8 +336,9 @@ SimpleUint256 simple_uint256_neg(const SimpleUint256& a) {
 
 SimpleUint256 simple_uint256_multi(const SimpleUint256& a, const SimpleUint256& b) {
 	// split values into 4 64-bit parts
-	SimpleUint128 top[4] = {simple_uint128_shift_right(a.big, 64), simple_uint128_bit_and(a.big, uint128_bigest), simple_uint128_shift_right(a.low, 64), simple_uint128_bit_and(a.low, uint128_bigest) };
-	SimpleUint128 bottom[4] = { simple_uint128_shift_right(b.big, 64), simple_uint128_bit_and(b.big, uint128_bigest), simple_uint128_shift_right(b.low, 64), simple_uint128_bit_and(b.low, uint128_bigest) };
+	SimpleUint128 mask = simple_uint128_create(0, uint64_bigest);
+	SimpleUint128 top[4] = {simple_uint128_shift_right(a.big, 64), simple_uint128_bit_and(a.big, mask), simple_uint128_shift_right(a.low, 64), simple_uint128_bit_and(a.low, mask) };
+	SimpleUint128 bottom[4] = { simple_uint128_shift_right(b.big, 64), simple_uint128_bit_and(b.big, mask), simple_uint128_shift_right(b.low, 64), simple_uint128_bit_and(b.low, mask) };
 	SimpleUint128 products[4][4];
 
 	// multiply each component of the values
@@ -334,22 +349,22 @@ SimpleUint256 simple_uint256_multi(const SimpleUint256& a, const SimpleUint256& 
 	}
 
 	// first row
-	SimpleUint128 fourth32 = simple_uint128_bit_and(products[0][3], uint128_bigest);
-	SimpleUint128 third32  = simple_uint128_add(simple_uint128_bit_and(products[0][2], uint128_bigest), simple_uint128_shift_right(products[0][3], 64));
-	SimpleUint128 second32 = simple_uint128_add(simple_uint128_bit_and(products[0][1], uint128_bigest), simple_uint128_shift_right(products[0][2], 64));
-	SimpleUint128 first32  = simple_uint128_add(simple_uint128_bit_and(products[0][0], uint128_bigest), simple_uint128_shift_right(products[0][1], 64));
+	SimpleUint128 fourth32 = simple_uint128_bit_and(products[0][3], mask);
+	SimpleUint128 third32  = simple_uint128_add(simple_uint128_bit_and(products[0][2], mask), simple_uint128_shift_right(products[0][3], 64));
+	SimpleUint128 second32 = simple_uint128_add(simple_uint128_bit_and(products[0][1], mask), simple_uint128_shift_right(products[0][2], 64));
+	SimpleUint128 first32  = simple_uint128_add(simple_uint128_bit_and(products[0][0], mask), simple_uint128_shift_right(products[0][1], 64));
 
 	// second row
-	third32  = simple_uint128_add(third32, simple_uint128_bit_and(products[1][3], uint128_bigest));
-	second32 = simple_uint128_add(second32, simple_uint128_add(simple_uint128_bit_and(products[1][2], uint128_bigest), simple_uint128_shift_right(products[1][3], 64)));
-	first32  = simple_uint128_add(first32, simple_uint128_add(simple_uint128_bit_and(products[1][1], uint128_bigest), simple_uint128_shift_right(products[1][2], 64)));
+	third32  = simple_uint128_add(third32, simple_uint128_bit_and(products[1][3], mask));
+	second32 = simple_uint128_add(second32, simple_uint128_add(simple_uint128_bit_and(products[1][2], mask), simple_uint128_shift_right(products[1][3], 64)));
+	first32  = simple_uint128_add(first32, simple_uint128_add(simple_uint128_bit_and(products[1][1], mask), simple_uint128_shift_right(products[1][2], 64)));
 
 	// third row
-	second32 = simple_uint128_add(second32, simple_uint128_bit_and(products[2][3], uint128_bigest));
-	first32  = simple_uint128_add(first32, simple_uint128_add(simple_uint128_bit_and(products[2][2], uint128_bigest), simple_uint128_shift_right(products[2][3], 64)));
+	second32 = simple_uint128_add(second32, simple_uint128_bit_and(products[2][3], mask));
+	first32  = simple_uint128_add(first32, simple_uint128_add(simple_uint128_bit_and(products[2][2], mask), simple_uint128_shift_right(products[2][3], 64)));
 
 	// fourth row
-	first32  = simple_uint128_add(first32, simple_uint128_bit_and(products[3][3], uint128_bigest));
+	first32  = simple_uint128_add(first32, simple_uint128_bit_and(products[3][3], mask));
 
 	// move carry to next digit
 	third32  = simple_uint128_add(third32, simple_uint128_shift_right(fourth32, 64));
@@ -357,10 +372,10 @@ SimpleUint256 simple_uint256_multi(const SimpleUint256& a, const SimpleUint256& 
 	first32  = simple_uint128_add(first32, simple_uint128_shift_right(second32, 64));
 
 	// remove carry from current digit
-	fourth32 = simple_uint128_bit_and(fourth32, uint128_bigest);
-	third32  = simple_uint128_bit_and(third32, uint128_bigest);
-	second32 = simple_uint128_bit_and(second32, uint128_bigest);
-	first32  = simple_uint128_bit_and(first32, uint128_bigest);
+	fourth32 = simple_uint128_bit_and(fourth32, mask);
+	third32  = simple_uint128_bit_and(third32, mask);
+	second32 = simple_uint128_bit_and(second32, mask);
+	first32  = simple_uint128_bit_and(first32, mask);
 
 	// combine components
 	const auto& result_big = simple_uint128_bit_or(simple_uint128_shift_left(first32, 64), second32);
@@ -511,7 +526,7 @@ SafeNumber safe_number_zero() {
 	SafeNumber n;
 	n.valid = true;
 	n.sign = true;
-	n.x = 0;
+	n.x = uint128_0;
 	n.e = 0;
 	return n;
 }
@@ -521,11 +536,12 @@ SafeNumber safe_number_create_invalid() {
 	SafeNumber n;
 	n.valid = false;
 	n.sign = true;
-	n.x = 0;
+	n.x = uint128_0;
 	n.e = 0;
 	return n;
 }
-const uint64_t largest_x = uint64_pow(10, 16);
+
+const SimpleUint128 largest_x = simple_uint128_multi(simple_uint128_create(0, uint64_pow(10, 16)), simple_uint128_create(0, uint64_pow(10, 16)));
 
 bool safe_number_is_valid(const SafeNumber& a) {
 	return a.valid;
@@ -540,31 +556,31 @@ static SafeNumber compress_number(const SafeNumber& a) {
 	if(!safe_number_is_valid(a)) {
 		return a;
 	}
-	uint64_t x = a.x;
+	SimpleUint128 x = a.x;
 	uint32_t e = a.e;
 	// when a.x * b.x is too big. should short result x and result e. Requires certainty and does not require complete accuracy
-	while(x > largest_x) {
+	while(simple_uint128_gt(x, largest_x)) {
 		if(e == 0)
 			break;
-		x = x / 10;
+		x = simple_uint128_divmod(x, uint128_10).div_result; // x / 10
 		--e;
 	}
 	uint32_t tmp_x_large_count = e;
 	while(tmp_x_large_count > 8) { // eg. when a = 1.1234567890123
-		x = x / 10;
+		x = simple_uint128_divmod(x, uint128_10).div_result; // x / 10
 		tmp_x_large_count--;
 	}
 	while(tmp_x_large_count < e) {
-		x = x * 10;
+		x = simple_uint128_multi(x, uint128_10); // x * 10;
 		++tmp_x_large_count;
 	}
-	while(x > 0 && (x/10 * 10 == x) && e > 0) {
-		x = x/10;
+	while(!simple_uint128_is_zero(x) && simple_uint128_eq(simple_uint128_multi(simple_uint128_divmod(x, uint128_10).div_result, uint128_10), x) && e > 0) {
+		x = simple_uint128_divmod(x, uint128_10).div_result; // x / 10
 		e--;
 	}
 	auto sign = a.sign;
 	if(e > 8) {
-		x = 0;
+		x = uint128_0;
 		e = 0;
 		sign = true;
 	}
@@ -576,7 +592,7 @@ static SafeNumber compress_number(const SafeNumber& a) {
 	return n;
 }
 
-SafeNumber safe_number_create(bool sign, uint64_t x, uint32_t e) {
+SafeNumber safe_number_create(bool sign, const SimpleUint128& x, uint32_t e) {
 	SafeNumber n;
 	n.valid = true;
 	n.sign = sign;
@@ -585,17 +601,31 @@ SafeNumber safe_number_create(bool sign, uint64_t x, uint32_t e) {
 	return compress_number(n);
 }
 
+SafeNumber safe_number_create(bool sign, const uint64_t& x, uint32_t e) {
+	return safe_number_create(sign, simple_uint128_create(0, x), e);
+}
+
 SafeNumber safe_number_create(int64_t value) {
 	SafeNumber n;
 	n.valid = true;
 	n.sign = value >= 0;
-	n.x = static_cast<uint64_t>(value >= 0 ? value : -value);
+	auto value_uint = static_cast<uint64_t>(value >= 0 ? value : -value);
+	n.x = simple_uint128_create(0, value_uint);
+	n.e = 0;
+	return compress_number(n);
+}
+
+SafeNumber safe_number_create(const SimpleUint128& value) {
+	SafeNumber n;
+	n.valid = true;
+	n.sign = true;
+	n.x = value;
 	n.e = 0;
 	return compress_number(n);
 }
 
 const SafeNumber sn_0 = safe_number_zero();
-const SafeNumber sn_1 = safe_number_create(true, 1, 0);
+const SafeNumber sn_1 = safe_number_create(true, uint128_1, 0);
 const SafeNumber sn_nan = safe_number_create_invalid();
 
 SafeNumber safe_number_create(const std::string& str) {
@@ -616,7 +646,7 @@ SafeNumber safe_number_create(const std::string& str) {
 	size_t pos = has_sign_char ? 1 : 0;
 	bool after_dot = false;
 	// sign * p.q & 10^-e
-	uint64_t x = 0;
+	SimpleUint128 x = uint128_0;
 	uint32_t e = 0;
 	while (pos < str_size) {
 		auto c = str_chars[pos];
@@ -629,7 +659,7 @@ SafeNumber safe_number_create(const std::string& str) {
 			after_dot = true;
 			continue;
 		}
-		x = 10 * x + c_int;
+		x = simple_uint128_add(simple_uint128_multi(x, uint128_10), c_int); // x = 10 * x + c_int;
 		if (after_dot) {
 			e++;
 		}
@@ -650,11 +680,27 @@ SafeNumber safe_number_add(const SafeNumber& a, const SafeNumber& b) {
 	if (safe_number_is_zero(a))
 		return b;
 	auto max_e = std::max(a.e, b.e);
-	uint64_t ax = a.x * uint64_pow(10, max_e - a.e); // a = sign * (x*100) * 10^-(e+2=max_e) if max_e - a.e = 2
-	uint64_t bx = b.x * uint64_pow(10, max_e - b.e);
-	int64_t result_sign_x = ax * (a.sign ? 1 : -1) + bx * (b.sign ? 1 : -1);
-	auto result_sign = result_sign_x >= 0;
-	uint64_t result_x = result_sign ? static_cast<uint64_t>(result_sign_x) : static_cast<uint64_t>(-result_sign_x);
+
+	SimpleUint128 ax = simple_uint128_multi(a.x, uint64_pow(10, max_e - a.e)); // a = sign * (x*100) * 10^-(e+2=max_e) if max_e - a.e = 2
+	SimpleUint128 bx = simple_uint128_multi(b.x, uint64_pow(10, max_e - b.e));
+
+	SimpleUint128 result_x {};
+	bool result_sign;
+	if(a.sign != b.sign) {
+		if(simple_uint128_gt(ax, bx)) {
+			result_sign = a.sign;
+			result_x = simple_uint128_minus(ax, bx);
+		} else if(simple_uint128_eq(ax, bx)) {
+			result_sign = true;
+			result_x = uint128_0;
+		} else {
+			result_sign = b.sign;
+			result_x = simple_uint128_minus(bx, ax);
+		}
+	} else {
+		result_sign = a.sign;
+		result_x = simple_uint128_add(ax, bx);
+	}
 	auto result_e = max_e;
 	return safe_number_create(result_sign, result_x, result_e);
 }
@@ -662,7 +708,7 @@ SafeNumber safe_number_add(const SafeNumber& a, const SafeNumber& b) {
 bool safe_number_is_zero(const SafeNumber& a) {
 	if (!a.valid)
 		return false;
-	return a.x == 0;
+	return simple_uint128_is_zero(a.x);
 }
 
 // - a
@@ -689,15 +735,14 @@ SafeNumber safe_number_multiply(const SafeNumber& a, const SafeNumber& b) {
 		return sn_0;
 	bool result_sign = a.sign == b.sign;
 	auto result_e = a.e + b.e;
-	auto ax = simple_uint128_create(0, a.x);
-	auto bx = simple_uint128_create(0, b.x);
-	auto abx = simple_uint128_multi(ax, bx); // a.x * b.x
-	auto uint128_10 = simple_uint128_create(0, 10);
-	while(abx.big>0) { // when abx is overflow as uint64_t format
+	auto ax = simple_uint256_create(uint128_0, a.x);
+	auto bx = simple_uint256_create(uint128_0, b.x);
+	auto abx = simple_uint256_multi(ax, bx); // a.x * b.x
+	while(!simple_uint128_is_zero(abx.big)) { // when abx is overflow as SimpleUint128 format
 		if(result_e==0) {
 			break;
 		}
-		abx = simple_uint128_divmod(abx, uint128_10).div_result; // abx = abx/10
+		abx = simple_uint256_divmod(abx, uint256_10).div_result; // abx = abx/10
 		--result_e;
 	}
 	auto result_x = abx.low; // throw abx's overflow upper part
@@ -715,24 +760,24 @@ SafeNumber safe_number_div(const SafeNumber& a, const SafeNumber& b) {
 		return sn_nan;
 	auto sign = a.sign == b.sign;
 	int32_t extra_e = a.e-b.e; // r.e need to add extra_e. if extra_e < -r.e then r.x = r.x * 10^(-extra_e - r.e) and r.e = 0
-	SimpleUint128 big_a = simple_uint128_create(0, a.x);
-	SimpleUint128 big_b = simple_uint128_create(0, b.x);
+	SimpleUint256 big_a = simple_uint256_create(uint128_0, a.x);
+	SimpleUint256 big_b = simple_uint256_create(uint128_0, b.x);
     // The resulting fractional form is big_a/big_b
 	// Approximate the score out of the decimal number
 	// Let the result be SafeNumber r, initial value is r.x = 0, r.e = -1
-	uint64_t rx = 0; // r.x
+	SimpleUint128 rx = uint128_0; // r.x
 	int32_t re = -1; // r.e
 	// r.x = r.x* 10 + big_a/big_b, big_a = (big_a % big_b) * 10, r.e += 1, Repeat this step until r.e >= 16 or big_a == 0 or rx > largest_x
 	do {
-		const auto& divmod = simple_uint128_divmod(big_a, big_b);
-		rx = rx * 10 + divmod.div_result.low; // ignore overflowed value
-		big_a = simple_uint128_multi(divmod.mod_result, uint128_10);
+		const auto& divmod = simple_uint256_divmod(big_a, big_b);
+		rx = simple_uint128_add(simple_uint128_multi(rx, 10), divmod.div_result.low); // ignore overflowed value
+		big_a = simple_uint256_multi(divmod.mod_result, uint256_10);
 		++re;
-	}while(re<16 && rx < largest_x && (big_a.big || big_a.low));
+	}while(re<16 && simple_uint128_lt(rx, largest_x) && !simple_uint256_is_zero (big_a));
 	if(extra_e>=-static_cast<int32_t>(re)) {
 		re += extra_e;
 	} else {
-		rx = rx * uint64_pow(10, -extra_e - re);
+		rx = simple_uint128_multi(rx, uint64_pow(10, -extra_e - re));
 		re = 0;
 	}
 	return safe_number_create(sign, rx, static_cast<uint32_t>(re));
@@ -772,11 +817,13 @@ std::string safe_number_to_string(const SafeNumber& a) {
 	}
 	// x = p.q
 	auto e10 = uint64_pow(10, val.e);
-	auto p = static_cast<uint64_t>(val.x / e10);
-	auto q = val.x % e10;
-	ss << p;
-	if(q>0) {
-		ss << "." << q;
+	const auto& e10_uint = simple_uint128_create(0, e10);
+	const auto& pq = simple_uint128_divmod(val.x, e10_uint);
+	const auto& p = pq.div_result;
+	const auto& q = pq.mod_result;
+	ss << simple_uint128_to_string(p, 10, 0);
+	if(!simple_uint128_is_zero(q)) {
+		ss << "." << simple_uint128_to_string(q, 10, 0);
 	}
 	return ss.str();
 }
@@ -790,7 +837,9 @@ int64_t safe_number_to_int64(const SafeNumber& a) {
 	}
 	int64_t result = 0;
 	if(a.e > 0) {
-		auto tmp = static_cast<int64_t>(a.x / uint64_pow(10, a.e));
+		auto ax_divmod = simple_uint128_divmod(a.x, simple_uint128_create(0, uint64_pow(10, a.e)));
+		auto tmp_uint128 = ax_divmod.div_result;
+		int64_t tmp = (static_cast<int64_t>(tmp_uint128.low) << 1) >> 1;
 		result = a.sign ? tmp : -tmp;
 	}
 	return result;
@@ -800,7 +849,7 @@ bool safe_number_eq(const SafeNumber& a, const SafeNumber& b) {
 	if(safe_number_invalid(a) || safe_number_invalid(b)) {
 		return false;
 	}
-	return a.sign == b.sign && a.x == b.x && a.e == b.e;
+	return a.sign == b.sign && simple_uint128_eq(a.x, b.x) && a.e == b.e;
 }
 
 bool safe_number_ne(const SafeNumber& a, const SafeNumber& b) {
@@ -817,26 +866,25 @@ bool safe_number_gt(const SafeNumber& a, const SafeNumber& b) {
 	if(a.sign != b.sign) {
 		return a.sign;
 	}
-	auto a_int = safe_number_to_int64(a);
-	auto b_int = safe_number_to_int64(b);
-	if(a_int > b_int) {
+	const auto& a_divmod = simple_uint128_divmod(a.x, simple_uint128_create(0, uint64_pow(10, a.e)));
+	const auto& b_divmod = simple_uint128_divmod(b.x, simple_uint128_create(0, uint64_pow(10, b.e)));
+
+	if(simple_uint128_gt(a_divmod.div_result, b_divmod.div_result)) {
 		return a.sign;
-	} else if(a_int < b_int) {
+	} else if(simple_uint128_lt(a_divmod.div_result, b_divmod.div_result)) {
 		return !a.sign;
 	}
-	uint64_t a_remaining = a.x - static_cast<uint64_t>((a.sign ? a_int : -a_int) * uint64_pow(10, a.e));
-	uint64_t b_remaining = b.x - static_cast<uint64_t>((b.sign ? b_int : -b_int) * uint64_pow(10, b.e));
-	auto extend_a_remaining = a_remaining;
-	auto extend_b_remaining = b_remaining;
+	auto extend_a_remaining = a_divmod.mod_result;
+	auto extend_b_remaining = b_divmod.mod_result;
 	if(a.e > b.e) {
-		extend_b_remaining *= uint64_pow(10, a.e - b.e);
+		extend_b_remaining = simple_uint128_multi(extend_b_remaining, uint64_pow(10, a.e - b.e));
 	} else if(a.e < b.e) {
-		extend_a_remaining *= uint64_pow(10, b.e - a.e);
+		extend_a_remaining = simple_uint128_multi(extend_a_remaining, uint64_pow(10, b.e - a.e));
 	}
-	if(extend_a_remaining == extend_b_remaining) {
+	if(simple_uint128_eq(extend_a_remaining, extend_b_remaining)) {
 		return false;
 	}
-	if(extend_a_remaining > extend_b_remaining) {
+	if(simple_uint128_gt(extend_a_remaining, extend_b_remaining)) {
 		return a.sign;
 	}
 	// extend_a_remaining < extend_b_remaining

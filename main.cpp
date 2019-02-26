@@ -51,10 +51,10 @@ int main() {
     test_assert(to_s(b4)=="-227276.85911266", "b4 invalid");
     auto b5 = safe_number_multiply(a6, a6); // 152415789650053.3
     cout << "b5=" << to_s(b5) << endl;
-    test_assert(to_s(b5)=="152415789650053.3", "b5 invalid");
-    auto b6 = safe_number_div(safe_number_create("12345678.98765432"), a3); // 12345678.98765432 / 0.123 = 100371373.8833684
+    test_assert(to_s(b5)=="152415789650053.346169", "b5 invalid");
+    auto b6 = safe_number_div(safe_number_create("12345678.98765432"), a3); // 12345678.98765432 / 0.123 = 100371373.88336845
     cout << "b6=" << to_s(b6) << endl;
-    test_assert(to_s(b6)=="100371373.8833684", "b6 invalid");
+    test_assert(to_s(b6)=="100371373.88336845", "b6 invalid");
     auto b7 = safe_number_mod(safe_number_create("12345678.98765432"), safe_number_create(5)); // 12345678.98765432 % 5 = 3.98765432
     cout << "b7=" << to_s(b7) << endl;
     test_assert(to_s(b7)=="3.98765432", "b7 invalid");

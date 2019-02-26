@@ -28,6 +28,12 @@ SimpleUint128 simple_uint128_minus(const SimpleUint128& a, const SimpleUint128& 
 SimpleUint128 simple_uint128_neg(const SimpleUint128& a);
 // a * b
 SimpleUint128 simple_uint128_multi(const SimpleUint128& a, const SimpleUint128& b);
+// a * b
+SimpleUint128 simple_uint128_multi(const SimpleUint128& a, uint64_t b);
+
+// a ^ p
+SimpleUint128 simple_uint128_pow(const SimpleUint128& a, uint8_t p);
+
 // a << b
 SimpleUint128 simple_uint128_shift_left(const SimpleUint128& a, uint32_t b);
 // a >> b
@@ -94,8 +100,8 @@ struct SafeNumber {
     // sign(+/-) x * (10^-e)
     bool valid; // isNaN
     bool sign; // sign == true means positive
-    uint64_t x; // in range [0, 10^16] when e > 0
-    uint32_t e; // in range [0, 8]. when e > 8 and x in [0, 10^16], this SafeNumber value will be zero
+    SimpleUint128 x; // in range [0, 10^32] when e > 0
+    uint32_t e; // in range [0, 16]. when e > 16 and x in [0, 10^32], this SafeNumber value will be zero
 };
 
 SafeNumber safe_number_zero();
@@ -107,9 +113,13 @@ bool safe_number_is_valid(const SafeNumber& a);
 
 bool safe_number_invalid(const SafeNumber& a);
 
-SafeNumber safe_number_create(bool sign, uint64_t x, uint32_t e);
+SafeNumber safe_number_create(bool sign, const SimpleUint128& x, uint32_t e);
+
+SafeNumber safe_number_create(bool sign, const uint64_t& x, uint32_t e);
 
 SafeNumber safe_number_create(int64_t value);
+
+SafeNumber safe_number_create(const SimpleUint128& value);
 
 SafeNumber safe_number_create(const std::string& str);
 

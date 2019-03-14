@@ -34,9 +34,22 @@ int main() {
     auto a6 = safe_number_create("12345678.987"); // 12345678.987
     cout << "a6=" << to_s(a6) << endl;
     test_assert(to_s(a6)=="12345678.987", "a6 invalid");
-    auto a7 = safe_number_create("1.1234567890123"); // 1.12345678
+    auto a7 = safe_number_create("1.1234567890123"); // 1.1234567890123   //小数保留16位
     cout << "a7=" << to_s(a7) << endl;
-    test_assert(to_s(a7)=="1.12345678", "a7 invalid");
+    test_assert(to_s(a7)=="1.1234567890123", "a7 invalid");
+
+	auto a9 = safe_number_create("0.000000000987654321"); 
+	cout << "a9=" << to_s(a9) << endl;
+	test_assert(to_s(a9) == "0.0000000009876543", "a9 invalid");
+
+	auto a10 = safe_number_create("0.0000000000000000987654321");
+	cout << "a10=" << to_s(a10) << endl;
+	test_assert(to_s(a10) == "0", "a10 invalid");
+
+	auto a11_int = safe_number_to_int64_floor(safe_number_create("-12.45563"));
+	cout << "a11_int=" << a11_int << endl;
+	test_assert(a11_int == -13, "a11 invalid");
+
     auto b1 = safe_number_multiply(a1, a2); // -670.5804
     cout << "b1=" << to_s(b1) << endl;
     test_assert(to_s(b1)=="-670.5804", "b1 invalid");
@@ -46,21 +59,22 @@ int main() {
     auto b3 = safe_number_div(a1, a5); // NaN
     cout << "b3=" << to_s(b3) << endl;
     test_assert(to_s(b3)=="NaN", "b3 invalid");
-    auto b4 = safe_number_div(a6, a2); // 12345678.987 / -54.32 = -227276.85911266
+    auto b4 = safe_number_div(a6, a2); // 12345678.987 / -54.32 = -227276.85911266   //-227276.8591126656848306
     cout << "b4=" << to_s(b4) << endl;
-    test_assert(to_s(b4)=="-227276.85911266", "b4 invalid");
+    test_assert(to_s(b4)=="-227276.8591126656848306", "b4 invalid");
     auto b5 = safe_number_multiply(a6, a6); // 152415789650053.3
     cout << "b5=" << to_s(b5) << endl;
     test_assert(to_s(b5)=="152415789650053.346169", "b5 invalid");
-    auto b6 = safe_number_div(safe_number_create("12345678.98765432"), a3); // 12345678.98765432 / 0.123 = 100371373.88336845
+    auto b6 = safe_number_div(safe_number_create("12345678.98765432"), a3); // 12345678.98765432 / 0.123 = 100371373.88336845   //100371373.8833684552845528
     cout << "b6=" << to_s(b6) << endl;
-    test_assert(to_s(b6)=="100371373.88336845", "b6 invalid");
+    test_assert(to_s(b6)=="100371373.8833684552845528", "b6 invalid");
     auto b7 = safe_number_mod(safe_number_create("12345678.98765432"), safe_number_create(5)); // 12345678.98765432 % 5 = 3.98765432
     cout << "b7=" << to_s(b7) << endl;
     test_assert(to_s(b7)=="3.98765432", "b7 invalid");
     auto b8 = safe_number_mod(safe_number_create("123"), safe_number_create(5)); // 123 % 5 = 3
     cout << "b8=" << to_s(b8) << endl;
     test_assert(to_s(b8)=="3", "b8 invalid");
+
     auto a2_int = safe_number_to_int64(a2); // -54
     cout << "int(a2)=" << a2_int << endl;
     test_assert(a2_int==-54, "a2_int invalid");
